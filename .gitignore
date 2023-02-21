@@ -1,3 +1,4 @@
 server/Server/bin/
 server/Server/.project
 server/Server/.classpath
+.DS_Store
