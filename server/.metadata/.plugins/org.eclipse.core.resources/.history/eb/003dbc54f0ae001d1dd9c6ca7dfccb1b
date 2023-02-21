@@ -1,0 +1,76 @@
+package me.spencernold.server.connection.packet.impl;
+
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+
+import me.spencernold.server.connection.Client;
+import me.spencernold.server.connection.packet.Id;
+import me.spencernold.server.connection.packet.Packet;
+import me.spencernold.server.messages.Conversation;
+import me.spencernold.server.messages.Message;
+import me.spencernold.server.messages.UserConvoHeader;
+import me.spencernold.server.util.ByteBuffer;
+import me.spencernold.server.util.Lists;
+
+@Id(id = 6)
+public class UpdateMessagesPacket implements Packet {
+
+	private String convo;
+	private int startIndex;
+	private int endIndex;
+	
+	private Map<Integer, Integer> manifest;
+	private int code;
+	
+	public UpdateMessagesPacket(Map<Integer, Integer> manifest, int code) {
+		this.code = code;
+	}
+	
+	public UpdateMessagesPacket() {
+	}
+
+	public byte[] write() {
+		ByteBuffer buf = new ByteBuffer();
+		buf.writeByte((byte) manifest.size());
+	}
+
+	public void read(ByteBuffer buf) {
+		convo = buf.readString();
+		startIndex = buf.readInt();
+		endIndex = buf.readInt();
+	}
+
+	public void handle(Client client) {
+		if (client.user == null)
+			return;
+		UserConvoHeader header = client.server.data.getUserConvoHeader();
+		byte[] secretKey = header.getMappedConvo(convo);
+		List<byte[]> convos = header.getUserConvos(client.user.getName());
+		if (Lists.contains(convos, secretKey, Arrays::equals)) {
+			try {
+				Conversation conversation = Conversation.loadConvo(secretKey);
+				if (conversation == null)
+					return;
+				if (endIndex == -1)
+					endIndex = conversation.getMessageCount();
+				if (startIndex < 0)
+					startIndex = endIndex - 25;
+				startIndex = startIndex < 0 ? 0 : startIndex;
+				if (endIndex == 0) {
+					client.send(new UpdateMessagesPacket(0));
+					return;
+				}
+				for (int i = startIndex; i < endIndex; i++) {
+					Message message = conversation.getMessage(i);
+					client.send(new MessagePacket(convo, message.getAuthor(), message.getIndex(), message.getType(), message.getData(), message.getSignature()));
+				}
+				client.send(new UpdateMessagesPacket(0));
+			} catch (IOException e) {
+				e.printStackTrace();
+				client.send(new UpdateMessagesPacket(1));
+			}
+		}
+	}
+}

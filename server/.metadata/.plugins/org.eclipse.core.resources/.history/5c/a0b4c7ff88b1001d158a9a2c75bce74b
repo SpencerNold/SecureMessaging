@@ -1,0 +1,54 @@
+package me.spencernold.server.connection.packet;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import me.spencernold.server.connection.packet.impl.AuthPacket;
+import me.spencernold.server.connection.packet.impl.MessagePacket;
+import me.spencernold.server.connection.packet.impl.NewConversationPacket;
+import me.spencernold.server.connection.packet.impl.PublicKeyPacket;
+import me.spencernold.server.connection.packet.impl.SessionKeyPacket;
+import me.spencernold.server.connection.packet.impl.UpdateConvosPacket;
+import me.spencernold.server.connection.packet.impl.UpdateMessagesPacket;
+import me.spencernold.server.util.ByteBuffer;
+
+public class PacketRegistry {
+
+	private static final Map<Integer, Class<? extends Packet>> registeredPackets = new HashMap<>();
+	
+	static {
+		// Handshake
+		register(PublicKeyPacket.class);
+		register(SessionKeyPacket.class);
+		// Authentication
+		register(AuthPacket.class);
+		// Conversation
+		register(NewConversationPacket.class);
+		register(UpdateConvosPacket.class);
+		register(MessagePacket.class);
+		register(UpdateMessagesPacket.class);
+	}
+	
+	private static void register(Class<? extends Packet> clazz) {
+		if (!clazz.isAnnotationPresent(Id.class)) {
+			System.err.println(clazz.getName() + " is missing an id annotation, skipping!");
+			return;
+		}
+		Id id = clazz.getAnnotation(Id.class);
+		registeredPackets.put(id.id(), clazz);
+	}
+	
+	public static Packet read(ByteBuffer buf) {
+		Class<? extends Packet> clazz = registeredPackets.get((int) buf.readByte());
+		if (clazz == null)
+			return null;
+		try {
+			Packet packet = clazz.getDeclaredConstructor().newInstance();
+			packet.read(buf);
+			return packet;
+		} catch (Exception e) {
+			e.printStackTrace();
+			return null;
+		}
+	}
+}

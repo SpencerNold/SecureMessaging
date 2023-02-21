@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<typeInfoHistroy>
+    <typeInfo handle="=Server/\/Library\/Java\/JavaVirtualMachines\/temurin-17.jdk\/Contents\/Home\/lib\/jrt-fs.jar`java.base=/module=/true=/=/javadoc_location=/https:\/\/docs.oracle.com\/en\/java\/javase\/17\/docs\/api\/=/&lt;java.lang(Object.class[Object" modifiers="33" timestamp="1658290508000"/>
+    <typeInfo handle="=Server/\/Library\/Java\/JavaVirtualMachines\/temurin-17.jdk\/Contents\/Home\/lib\/jrt-fs.jar`java.base=/module=/true=/=/javadoc_location=/https:\/\/docs.oracle.com\/en\/java\/javase\/17\/docs\/api\/=/&lt;java.io(RandomAccessFile.class[RandomAccessFile" modifiers="33" timestamp="1658290508000"/>
+    <typeInfo handle="=Server/src&lt;me.spencernold.server.util{Serializer.java[Serializer" modifiers="1" timestamp="1675150307000"/>
+    <typeInfo handle="=Server/src&lt;me.spencernold.server.auth{UserDB.java[UserDB" modifiers="1" timestamp="1675306924000"/>
+    <typeInfo handle="=Server/src&lt;me.spencernold.server.util{ByteBuffer.java[ByteBuffer" modifiers="1" timestamp="1675925973000"/>
+    <typeInfo handle="=Server/src&lt;me.spencernold.server.encryption{Signer.java[Signer" modifiers="1" timestamp="1675738774000"/>
+    <typeInfo handle="=Server/src&lt;me.spencernold.server.messages{UserConvoHeader.java[UserConvoHeader" modifiers="1" timestamp="1675829625000"/>
+    <typeInfo handle="=Server/src&lt;me.spencernold.server.connection.packet.impl{NewConversationPacket.java[NewConversationPacket" modifiers="1" timestamp="1676836159000"/>
+    <typeInfo handle="=Server/src&lt;me.spencernold.server.encryption{PublicKey.java[PublicKey" modifiers="1" timestamp="1675188483000"/>
+    <typeInfo handle="=Server/src&lt;me.spencernold.server.auth{User.java[User" modifiers="1" timestamp="1676054673000"/>
+    <typeInfo handle="=Server/src&lt;me.spencernold.server.messages{Conversation.java[Conversation" modifiers="1" timestamp="1675926594000"/>
+    <typeInfo handle="=Server/src&lt;me.spencernold.server.connection.packet{Packet.java[Packet" modifiers="513" timestamp="1675150610000"/>
+    <typeInfo handle="=Server/src&lt;me.spencernold.server.messages{ConvoDB.java[ConvoDB" modifiers="1" timestamp="1675926588000"/>
+    <typeInfo handle="=Server/src&lt;me.spencernold.server.connection.packet.impl{UpdateConvosPacket.java[UpdateConvosPacket" modifiers="1" timestamp="1675829387000"/>
+    <typeInfo handle="=Server/src&lt;me.spencernold.server.connection.packet.impl{AuthPacket.java[AuthPacket" modifiers="1" timestamp="1676054691000"/>
+    <typeInfo handle="=Server/src&lt;me.spencernold.server.util{ByteTool.java[ByteTool" modifiers="1" timestamp="1676340880000"/>
+    <typeInfo handle="=Server/src&lt;me.spencernold.server{Main.java[Main" modifiers="1" timestamp="1676656832000"/>
+    <typeInfo handle="=Server/src&lt;me.spencernold.server.connection.packet.impl{PublicKeyPacket.java[PublicKeyPacket" modifiers="1" timestamp="1675185903000"/>
+    <typeInfo handle="=Server/src&lt;me.spencernold.server.connection{Client.java[Client" modifiers="1" timestamp="1676490364000"/>
+    <typeInfo handle="=Server/src&lt;me.spencernold.server.connection.packet.impl{UpdateMessagesPacket.java[UpdateMessagesPacket" modifiers="1" timestamp="1676662417000"/>
+    <typeInfo handle="=Server/src&lt;me.spencernold.server.connection.packet.impl{MessagePacket.java[MessagePacket" modifiers="1" timestamp="1676664052000"/>
+    <typeInfo handle="=Server/src&lt;me.spencernold.server.connection.packet{PacketRegistry.java[PacketRegistry" modifiers="1" timestamp="1676341901000"/>
+</typeInfoHistroy>

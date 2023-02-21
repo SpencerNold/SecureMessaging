@@ -1,0 +1,54 @@
+package me.spencernold.server;
+
+import java.io.IOException;
+
+import me.spencernold.server.auth.UserDB;
+import me.spencernold.server.connection.Client;
+import me.spencernold.server.connection.ConnectionHandler;
+import me.spencernold.server.connection.Server;
+import me.spencernold.server.connection.packet.Packet;
+import me.spencernold.server.connection.packet.PacketRegistry;
+import me.spencernold.server.messages.UserConvoHeader;
+import me.spencernold.server.util.ByteBuffer;
+
+public class Main {
+
+	public static void main(String[] args) {
+		if (true) {
+			
+			return;
+		}
+		try {
+			UserConvoHeader uch = new UserConvoHeader("data");
+			uch.load();
+			UserDB udb = new UserDB("users/userdata");
+			Server server = new Server(8192, new ConnectionHandler() {
+				public void onConnect(Client client) {
+					System.out.println("Connection <- " + client.getAddress());
+				}
+				
+				public void onMessage(Client client, ByteBuffer buf) {
+					Packet packet = PacketRegistry.read(buf);
+					if (packet == null) {
+						System.err.println("Missing packet!");
+						return;
+					}
+					packet.handle(client);
+				}
+				
+				public void onDisconnect(Client client) {
+					if (client.user != null)
+						client.server.data.authenticatedClients.remove(client.user.getName());
+					System.out.println("Disconnection -> " + client.getAddress());
+				}
+			});
+			server.data.setUserDB(udb);
+			server.data.setUserConvoHeader(uch);
+			
+			System.out.println("Starting server on port " + server.getPort() + "...");
+			server.listen();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+}

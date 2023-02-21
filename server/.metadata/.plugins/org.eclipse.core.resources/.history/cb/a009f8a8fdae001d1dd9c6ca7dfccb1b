@@ -1,0 +1,90 @@
+package me.spencernold.server.connection.packet.impl;
+
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.Base64;
+import java.util.List;
+
+import me.spencernold.server.connection.Client;
+import me.spencernold.server.connection.packet.Id;
+import me.spencernold.server.connection.packet.Packet;
+import me.spencernold.server.encryption.Signer;
+import me.spencernold.server.messages.Conversation;
+import me.spencernold.server.messages.Message;
+import me.spencernold.server.messages.UserConvoHeader;
+import me.spencernold.server.util.ByteBuffer;
+import me.spencernold.server.util.Lists;
+
+@Id(id = 5)
+public class MessagePacket implements Packet {
+	
+	private String convo;
+	private String from;
+	private int index;
+	private byte type;
+	private byte[] message;
+	private byte[] signature;
+	
+	public MessagePacket(String convo, String from, int index, byte type, byte[] message, byte[] signature) {
+		this.convo = convo;
+		this.from = from;
+		this.index = index;
+		this.type = type;
+		this.message = message;
+		this.signature = signature;
+	}
+	
+	public MessagePacket() {
+	}
+
+	public byte[] write() {
+		ByteBuffer buf = new ByteBuffer();
+		buf.writeString(convo);
+		buf.writeString(from);
+		buf.writeInt(index);
+		buf.writeByte(type);
+		buf.writeString(Base64.getEncoder().encodeToString(message));
+		buf.writeString(Base64.getEncoder().encodeToString(signature));
+		return buf.toByteArray();
+	}
+
+	public void read(ByteBuffer buf) {
+		convo = buf.readString();
+		from = buf.readString();
+		type = buf.readByte();
+		message = Base64.getDecoder().decode(buf.readString());
+		signature = Base64.getDecoder().decode(buf.readString());
+	}
+
+	public void handle(Client client) {
+		// TODO If an image is received, send a place holder out, then send an image out
+		if (client.user == null)
+			return;
+		Signer signer = new Signer();
+		boolean valid = signer.verify(client.user.getPublicKey(), message, signature);
+		if (valid) {
+			UserConvoHeader header = client.server.data.getUserConvoHeader();
+			byte[] secretKey = header.getMappedConvo(convo);
+			List<byte[]> convos = header.getUserConvos(client.user.getName());
+			if (Lists.contains(convos, secretKey, Arrays::equals)) {
+				try {
+					Conversation conversation = Conversation.loadConvo(secretKey);
+					if (conversation == null)
+						return;
+					Message message = new Message(from, type, this.message, signature, conversation.getMessageCount());
+					for (String s : conversation.getUsers()) {
+						Client c = client.server.data.authenticatedClients.get(s);
+						if (c == null)
+							continue;
+						c.send(new MessagePacket(convo, from, message.getIndex(), type, message.getData(), message.getSignature()));
+					}
+					conversation.addMessage(message);
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			} else {
+				System.out.println("bruh");
+			}
+		}
+	}
+}

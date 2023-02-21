@@ -1,0 +1,10 @@
+package me.spencernold.server.connection;
+
+import me.spencernold.server.connection.packet.Packet;
+
+public interface ConnectionHandler {
+
+	public void onConnect(Client client);
+	public void onMessage(Client client, Packet packet);
+	public void onDisconnect(Client client);
+}

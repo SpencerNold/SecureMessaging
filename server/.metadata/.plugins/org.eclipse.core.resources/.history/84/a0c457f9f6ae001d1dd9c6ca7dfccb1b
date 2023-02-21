@@ -1,0 +1,97 @@
+package me.spencernold.server.connection.packet.impl;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+
+import me.spencernold.server.connection.Client;
+import me.spencernold.server.connection.packet.Id;
+import me.spencernold.server.connection.packet.Packet;
+import me.spencernold.server.messages.Conversation;
+import me.spencernold.server.messages.Message;
+import me.spencernold.server.messages.UserConvoHeader;
+import me.spencernold.server.util.ByteBuffer;
+import me.spencernold.server.util.Lists;
+
+@Id(id = 6)
+public class UpdateMessagesPacket implements Packet {
+
+	private String convo;
+	private int startIndex;
+	private int endIndex;
+	
+	private Map<Byte, Byte> manifest;
+	private int code;
+	
+	public UpdateMessagesPacket(Map<Byte, Byte> manifest, int code) {
+		this.code = code;
+	}
+	
+	public UpdateMessagesPacket() {
+	}
+
+	public byte[] write() {
+		ByteBuffer buf = new ByteBuffer();
+		buf.writeByte((byte) manifest.size());
+		for (Entry<Byte, Byte> en : manifest.entrySet()) {
+			buf.writeByte(en.getKey());
+			buf.writeByte(en.getValue());
+		}
+		buf.writeByte((byte) code);
+		return buf.toByteArray();
+	}
+
+	public void read(ByteBuffer buf) {
+		convo = buf.readString();
+		startIndex = buf.readInt();
+		endIndex = buf.readInt();
+	}
+
+	public void handle(Client client) {
+		if (client.user == null)
+			return;
+		UserConvoHeader header = client.server.data.getUserConvoHeader();
+		byte[] secretKey = header.getMappedConvo(convo);
+		List<byte[]> convos = header.getUserConvos(client.user.getName());
+		if (Lists.contains(convos, secretKey, Arrays::equals)) {
+			try {
+				Conversation conversation = Conversation.loadConvo(secretKey);
+				if (conversation == null)
+					return;
+				if (endIndex == -1)
+					endIndex = conversation.getMessageCount();
+				if (startIndex < 0)
+					startIndex = endIndex - 25;
+				startIndex = startIndex < 0 ? 0 : startIndex;
+				if (endIndex == 0) {
+					client.send(new UpdateMessagesPacket(new HashMap<>(), 0));
+					return;
+				}
+				// 0 message
+				// 1 image
+				// 2 placeholder
+				// 3 deffered image
+				List<Message> deferred = new ArrayList<>();
+				for (int i = startIndex; i < endIndex; i++) {
+					Message m = conversation.getMessage(i);
+					if (m.getType() == 1) {
+						deferred.add(m);
+						// Send type 2
+						continue;
+					}
+					client.send(new MessagePacket(convo, m.getAuthor(), m.getIndex(), m.getType(), m.getData(), m.getSignature()));
+				}
+				for (Message m : deferred)
+					client.send(new MessagePacket(convo, m.getAuthor(), m.getIndex(), m.getType(), m.getData(), m.getSignature()));
+				client.send(new UpdateMessagesPacket(new HashMap<>(), 0));
+			} catch (IOException e) {
+				e.printStackTrace();
+				client.send(new UpdateMessagesPacket(new HashMap<>(), 1));
+			}
+		}
+	}
+}

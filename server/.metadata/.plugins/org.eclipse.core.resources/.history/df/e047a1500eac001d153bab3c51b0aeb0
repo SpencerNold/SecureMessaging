@@ -1,0 +1,101 @@
+package me.spencernold.server.connection;
+
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.net.Socket;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.Base64;
+import java.util.Scanner;
+
+import me.spencernold.server.auth.User;
+import me.spencernold.server.connection.packet.Packet;
+import me.spencernold.server.connection.packet.PacketRegistry;
+import me.spencernold.server.util.ByteBuffer;
+import me.spencernold.server.util.ByteTool;
+
+public class Client implements Runnable {
+
+	private final ConnectionHandler handler;
+	private final Socket socket;
+	private final Scanner scanner;
+	private final PrintWriter writer;
+	
+	public State state = State.OPEN;
+
+	public final Server server;
+	public final ClientData data;
+	
+	public User user;
+
+	public Client(Server server, Socket socket, ConnectionHandler handler) throws IOException {
+		this.server = server;
+		this.socket = socket;
+		this.handler = handler;
+		this.scanner = new Scanner(socket.getInputStream());
+		this.writer = new PrintWriter(socket.getOutputStream());
+		this.data = new ClientData(server.data);
+	}
+	
+	public void run() {
+		
+	}
+	
+	private Packet readPacket() {
+		scanner.hasNext(); // Block until the scanner has next
+		byte[] header = scanner.nextLine().getBytes(StandardCharsets.UTF_8);
+		ByteBuffer buf = new ByteBuffer(header);
+		byte id = buf.readByte();
+		int parts = buf.readInt();
+		byte[] data = new byte[0];
+		for (int i = 0; i < parts; i++) {
+			scanner.hasNext();
+			byte[] part = scanner.nextLine().getBytes(StandardCharsets.UTF_8);
+			buf = new ByteBuffer(part);
+			int size = buf.readShort();
+			part = buf.readBytes(size);
+			data = ByteTool.append(data, part);
+		}
+	}
+	
+	public void send(Packet packet) {
+		byte[] data = packet.write();
+		int parts = (int) Math.ceil(data.length / 1024.0d);
+		ByteBuffer buf = new ByteBuffer();
+		buf.writeByte((byte) packet.getId());
+		buf.writeInt(parts);
+		for (int i = 0; i < parts; i++) {
+			buf = new ByteBuffer();
+			if (data.length < 1024) {
+				buf.writeShort((short) data.length);
+				buf.writeBytes(data);
+			} else {
+				buf.writeShort((short) 1024);
+				buf.writeBytes(Arrays.copyOfRange(data, 0, 1024));
+				data = Arrays.copyOfRange(data, 1024, data.length);
+			}
+			send(buf.toByteArray());
+		}
+	}
+	
+	private void send(byte[] bytes) {
+		if (state == State.HANDSHAKING)
+			bytes = data.encryptRSA(bytes);
+		else if (state == State.SECURE)
+			bytes = data.encryptAES(bytes);
+		writer.write(Base64.getEncoder().encodeToString(bytes) + "\n");
+		writer.flush();
+	}
+	
+	public void close() throws IOException {
+		socket.close();
+	}
+	
+	public String getAddress() {
+		return socket.getInetAddress().getHostAddress() + ":" + socket.getPort();
+	}
+	
+	public enum State {
+		OPEN, HANDSHAKING, SECURE;
+	}
+}

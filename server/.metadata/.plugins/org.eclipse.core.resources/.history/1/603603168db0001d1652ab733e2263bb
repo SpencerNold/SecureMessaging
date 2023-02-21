@@ -1,0 +1,89 @@
+package me.spencernold.server.connection.packet.impl;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
+import me.spencernold.server.auth.UserDB;
+import me.spencernold.server.connection.Client;
+import me.spencernold.server.connection.packet.Id;
+import me.spencernold.server.connection.packet.Packet;
+import me.spencernold.server.messages.Conversation;
+import me.spencernold.server.messages.UserConvoHeader;
+import me.spencernold.server.util.ByteBuffer;
+import me.spencernold.server.util.Serializer;
+
+@Id(id = 3)
+public class NewConversationPacket implements Packet {
+	
+	private String name;
+	private Optional<String> icon;
+	private List<String> users;
+	
+	private int code;
+	
+	public NewConversationPacket(int code) {
+		this.code = code;
+	}
+	
+	public NewConversationPacket() {
+	}
+
+	public byte[] write() {
+		return Serializer.intToBytesBE(code);
+	}
+
+	public void read(ByteBuffer buf) {
+		name = buf.readString();
+		icon = buf.readOptionalString();
+		users = new ArrayList<>();
+		int size = buf.readInt();
+		for (int i = 0; i < size; i++)
+			users.add(buf.readString());
+	}
+
+	public void handle(Client client) {
+		if (client.user == null)
+			return;
+		try {
+			UserConvoHeader header = client.server.data.getUserConvoHeader();
+			for (byte[] bytes : header.getUserConvos(name)) {
+				Conversation c = Conversation.loadConvo(bytes);
+				if (c.getName().equals(name)) {
+					client.send(new NewConversationPacket(2));
+					return;
+				}
+			}
+			UserDB udb = client.server.data.getUserDB();
+			for (String s : users) {
+				if (!udb.exists(s)) {
+					client.send(new NewConversationPacket(3));
+					return;
+				}
+			}
+			Conversation conversation = Conversation.createConvo(name, icon, users);
+			if (conversation == null)
+				client.send(new NewConversationPacket(1));
+			else {
+				UserDB udb = client.server.data.getUserDB();
+				for (String s : users) {
+					if (!udb.exists(s))
+						continue;
+					header.addUserConvo(s, conversation.getSecretKey());
+					Client c = client.server.data.authenticatedClients.get(s);
+					if (c == null)
+						continue;
+					c.send(new NewConversationPacket(0));
+				}
+				header.addMappedConvo(conversation.getName(), conversation.getSecretKey());
+				if (!header.isSaving())
+					header.saveAsync();
+			}
+			// TODO send push notifications
+		} catch (IOException e) {
+			e.printStackTrace();
+			client.send(new NewConversationPacket(1));
+		}
+	}
+}

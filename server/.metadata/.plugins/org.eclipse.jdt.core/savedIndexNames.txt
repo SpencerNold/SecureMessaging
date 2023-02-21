@@ -1,0 +1,4 @@
+INDEX VERSION 1.131+/Users/spencernold/Desktop/SecureMessaging/server/.metadata/.plugins/org.eclipse.jdt.core
+3981961839.index
+1865797976.index
+1218111336.index

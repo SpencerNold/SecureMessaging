@@ -1,0 +1,94 @@
+package me.spencernold.server.connection;
+
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.net.Socket;
+import java.util.Base64;
+import java.util.Scanner;
+
+import me.spencernold.server.auth.User;
+import me.spencernold.server.connection.packet.Packet;
+import me.spencernold.server.util.ByteBuffer;
+
+public class Client implements Runnable {
+
+	private final ConnectionHandler handler;
+	private final Socket socket;
+	private final Scanner scanner;
+	private final PrintWriter writer;
+	
+	public State state = State.OPEN;
+
+	public final Server server;
+	public final ClientData data;
+	
+	public User user;
+
+	public Client(Server server, Socket socket, ConnectionHandler handler) throws IOException {
+		this.server = server;
+		this.socket = socket;
+		this.handler = handler;
+		this.scanner = new Scanner(socket.getInputStream());
+		this.writer = new PrintWriter(socket.getOutputStream());
+		this.data = new ClientData(server.data);
+	}
+	
+	public void run() {
+		String built = null;
+		while (scanner.hasNext()) {
+			System.out.println("In?");
+			String line = scanner.nextLine();
+			if (built != null) {
+				built += line;
+				if (line.charAt(line.length() - 1) != '|')
+					return;
+			}
+			if (built == null && line.charAt(0) == '|' && line.charAt(line.length() - 1) != '|') {
+				built = line;
+				return;
+			}
+			String real = built == null ? line : built;
+			real = real.substring(1, real.length() - 1);
+			built = null;
+			byte[] bytes = Base64.getDecoder().decode(real);
+			if (bytes.length < 4) {
+				System.err.println("Malformed packet, missing id!");
+				continue;
+			}
+			if (state == State.HANDSHAKING)
+				bytes = data.decryptRSA(bytes);
+			else if (state == State.SECURE)
+				bytes = data.decryptAES(bytes);
+			handler.onMessage(this, new ByteBuffer(bytes));
+		}
+		handler.onDisconnect(this);
+	}
+	
+	public void send(Packet packet) {
+		ByteBuffer buf = new ByteBuffer();
+		buf.writeByte((byte) packet.getId());
+		buf.writeBytes(packet.write());
+		send(buf.toByteArray());
+	}
+	
+	private void send(byte[] bytes) {
+		if (state == State.HANDSHAKING)
+			bytes = data.encryptRSA(bytes);
+		else if (state == State.SECURE)
+			bytes = data.encryptAES(bytes);
+		writer.write(String.format("|%s|", Base64.getEncoder().encodeToString(bytes)));
+		writer.flush();
+	}
+	
+	public void close() throws IOException {
+		socket.close();
+	}
+	
+	public String getAddress() {
+		return socket.getInetAddress().getHostAddress() + ":" + socket.getPort();
+	}
+	
+	public enum State {
+		OPEN, HANDSHAKING, SECURE;
+	}
+}
